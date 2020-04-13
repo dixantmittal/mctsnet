@@ -1,10 +1,13 @@
-class Base:
+from copy import deepcopy
+
+
+class BaseSimulator:
     def __init__(self):
         self.state = None
 
     def step(self, action):
         self.state, r, t = self.simulate(self.state, action)
-        return self.state, r, t
+        return deepcopy(self.state), r, t
 
     def reset(self):
         raise NotImplementedError

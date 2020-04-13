@@ -1,5 +1,10 @@
 .idea/
 *.xml
 *__pycache__*
+.vscode
+.DS_Store
+models/*
 runs/*
+results/*
 logs/*
+data/*

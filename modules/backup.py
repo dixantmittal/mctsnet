@@ -1,29 +1,47 @@
-import torch
-from torch import nn as nn
+import torch as t
+import torch.nn as nn
 
-from environment import ENVIRONMENT
-from modules.common import DenseBlock, hidden_size
-from utils.basic import to_one_hot
+from environment import SIMULATOR
+from modules.commons import hidden_size, d_memory, ResidualLinear
 
 
-# Updates the memory based on child's updated memory and node's current memory
+# Updates the embedding based on child's new embedding and current node's old embedding
 class Backup(nn.Module):
-    def __init__(self, d_memory):
+    def __init__(self):
         super().__init__()
-        d_input = d_memory + d_memory + ENVIRONMENT.n_actions + 1  # 1 for reward
-        self.transform = nn.Sequential(nn.Linear(d_input, hidden_size), nn.ReLU(),
-                                       DenseBlock(1, hidden_size),
-                                       nn.Linear(hidden_size, d_memory))
-        self.forget = nn.Linear(d_input, d_memory)
-        self.add = nn.Linear(d_input, d_memory)
 
-    def forward(self, current_memory, child_memory, action, reward):
-        action = to_one_hot(action, ENVIRONMENT.n_actions)
-        reward = torch.tensor([reward]).float()
-        phi = torch.cat((current_memory, child_memory, action, reward), dim=0)
+        self.memory = nn.Linear(d_memory, hidden_size)
+        self.child_memory = nn.Linear(d_memory, hidden_size)
+        self.action = nn.Linear(SIMULATOR.n_actions, hidden_size)
+        self.reward = nn.Linear(1, hidden_size)
 
-        transform = self.transform(phi)
-        forget = torch.sigmoid(self.forget(phi))
-        add = torch.tanh(self.add(phi))
+        d_input = 4 * hidden_size
 
-        return current_memory * forget + transform * add
+        self.forget = nn.Sequential(nn.Linear(d_input, hidden_size), nn.ReLU(),
+                                    ResidualLinear(hidden_size),
+                                    ResidualLinear(hidden_size),
+                                    nn.Linear(hidden_size, d_memory))
+
+        self.update = nn.Sequential(nn.Linear(d_input, hidden_size), nn.ReLU(),
+                                    ResidualLinear(hidden_size),
+                                    ResidualLinear(hidden_size),
+                                    nn.Linear(hidden_size, d_memory))
+
+        self.info = nn.Sequential(nn.Linear(d_input, hidden_size), nn.ReLU(),
+                                  ResidualLinear(hidden_size),
+                                  ResidualLinear(hidden_size),
+                                  nn.Linear(hidden_size, d_memory))
+
+    def forward(self, memory, child_memory, action, reward):
+        e_memory = t.relu(self.memory(memory))
+        e_child_memory = t.relu(self.child_memory(child_memory))
+        e_action = t.relu(self.action(action))
+        e_reward = t.relu(self.reward(reward))
+
+        phi = t.cat((e_memory, e_child_memory, e_action, e_reward), dim=0)
+
+        forget = t.sigmoid(self.forget(phi))
+        update = t.tanh(self.update(phi))
+        info = t.relu(self.info(phi))
+
+        return memory * forget + update * info

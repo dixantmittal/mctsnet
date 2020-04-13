@@ -1,17 +1,27 @@
-from torch import nn as nn
+import torch as t
+import torch.nn as nn
 
-from environment import ENVIRONMENT
-from modules.common import DenseBlock, hidden_size
+from environment import SIMULATOR
+from modules.commons import ResidualLinear, hidden_size, d_memory
 
 
-# Guides the search in the MCTSnet tree
+# Guides the search in the POMCP tree
 class Policy(nn.Module):
-    def __init__(self, d_memory):
+    def __init__(self):
         super().__init__()
-        d_input = d_memory + d_memory * ENVIRONMENT.n_actions
-        self.layers = nn.Sequential(nn.Linear(d_input, hidden_size), nn.ReLU(),
-                                    DenseBlock(1, hidden_size),
-                                    nn.Linear(hidden_size, ENVIRONMENT.n_actions))
 
-    def forward(self, x):
-        return self.layers(x)
+        self.memory = nn.Linear(d_memory, hidden_size)
+        self.children_memory = nn.Linear(d_memory * SIMULATOR.n_actions, hidden_size)
+
+        self.policy = nn.Sequential(nn.Linear(2 * hidden_size, hidden_size), nn.ReLU(),
+                                    ResidualLinear(hidden_size),
+                                    ResidualLinear(hidden_size),
+                                    nn.Linear(hidden_size, SIMULATOR.n_actions))
+
+    def forward(self, node):
+        memory = t.relu(self.memory(node.tensors.memory))
+        children = t.relu(self.children_memory(t.cat(node.tensors.children)))
+
+        x = t.cat([memory, children], dim=0)
+
+        return self.policy(x)

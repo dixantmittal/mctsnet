@@ -1,3 +1,3 @@
 from simulators import *
 
-ENVIRONMENT = GridNavigation
+SIMULATOR = RockSample

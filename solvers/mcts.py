@@ -1,6 +1,7 @@
 import numpy as np
 
-from environment import ENVIRONMENT
+from environment import SIMULATOR
+from solvers.ISolver import ISolver
 
 
 class Node:
@@ -8,26 +9,26 @@ class Node:
         self.state = state
 
         self.children = {}
-        self.N = ENVIRONMENT.n_actions
-        self.N_a = np.ones(ENVIRONMENT.n_actions)
-        self.Q = np.zeros(ENVIRONMENT.n_actions)
+        self.N = SIMULATOR.n_actions
+        self.N_a = np.ones(SIMULATOR.n_actions)
+        self.Q = np.zeros(SIMULATOR.n_actions)
 
         if not terminal:
-            for i in range(ENVIRONMENT.n_actions):
-                self.Q[i] = ENVIRONMENT.rollout(state, i)
+            for i in range(SIMULATOR.n_actions):
+                self.Q[i] = SIMULATOR.rollout(state, i)
 
         self.terminal = terminal
 
 
-class MCTS:
+class MCTS(ISolver):
     c = 100
 
     @staticmethod
-    def search(state, n_simulations, root):
+    def search(state, args, root=None):
         if root is None:
             root = Node(state)
 
-        for i in range(n_simulations):
+        for i in range(args.n_simulations):
             node = root
             path = []
             # Start simulation and add a new child
@@ -38,7 +39,7 @@ class MCTS:
                 action = int(np.argmax(Q))
 
                 # simulate with action to get next state
-                state, reward, terminal = ENVIRONMENT.simulate(node.state, action)
+                state, reward, terminal = SIMULATOR.simulate(node.state, action)
 
                 path.append((node, action, reward))
 
