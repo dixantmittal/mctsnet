@@ -1,1 +1,1 @@
-from .gridnavigation import GridNavigation
+from .rocksample import RockSample

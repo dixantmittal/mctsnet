@@ -1,16 +1,18 @@
-from torch import nn as nn
+import torch.nn as nn
 
-from environment import ENVIRONMENT
-from modules.common import DenseBlock, hidden_size
+from environment import SIMULATOR
+from modules.commons import hidden_size, d_memory, ResidualLinear
 
 
 # Output the policy at the end of the search
 class Readout(nn.Module):
-    def __init__(self, d_memory):
+    def __init__(self):
         super().__init__()
-        self.layers = nn.Sequential(nn.Linear(d_memory, hidden_size), nn.ReLU(),
-                                    DenseBlock(1, hidden_size),
-                                    nn.Linear(hidden_size, ENVIRONMENT.n_actions))
+        self.readout = nn.Sequential(nn.Linear(d_memory, hidden_size),
+                                     nn.ReLU(),
+                                     ResidualLinear(hidden_size),
+                                     ResidualLinear(hidden_size),
+                                     nn.Linear(hidden_size, SIMULATOR.n_actions))
 
     def forward(self, x):
-        return self.layers(x)
+        return self.readout(x)
